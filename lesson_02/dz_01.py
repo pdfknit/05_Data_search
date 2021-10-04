@@ -24,7 +24,6 @@ for product_type in range(0, len(pages)):
     soup = bs(response.text, 'html.parser')
     paginator = soup.find_all('div', attrs={'class': 'page-pagination'})
     category_pages = paginator[0].find_all('a', attrs={'class': 'page-num'})
-    test = category_pages[-2].text
 
     for page_number in range(1, int(category_pages[-2].text)+1):
         params['page'] = page_number
