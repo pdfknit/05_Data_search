@@ -23,12 +23,10 @@ for product_type in range(0, len(pages)):
     response = requests.get(url + pages[product_type], params=params, headers=headers)
     soup = bs(response.text, 'html.parser')
     paginator = soup.find_all('div', attrs={'class': 'page-pagination'})
-    category_pages = paginator[0].find_all('a', attrs={'class': 'page-num AJAX_toggle'})
+    category_pages = paginator[0].find_all('a', attrs={'class': 'page-num'})
+    test = category_pages[-2].text
 
-    for page_number in range(1, len(category_pages)+2):
-        #выглядит костыльно, знаю, прибавляю 2 страницы: активную и текущую, но не придумала лучше,
-        # потому что когда достаешь просто количество страниц там, где их меньше 3 все ок,
-        # где больше 3х появляется какой-то волшебная дополнительная ссылка, которая заставляет проходить по 1 странице в категории еще раз
+    for page_number in range(1, int(category_pages[-2].text)+1):
         params['page'] = page_number
         response = requests.get(url + pages[product_type], params=params, headers=headers)
         soup = bs(response.text, 'html.parser')
