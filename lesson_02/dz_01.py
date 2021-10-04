@@ -18,45 +18,62 @@ params = {'page': 1}
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36'}
 product_data = {}
+full_product_list = []
 for product_type in range(0, len(pages)):
     response = requests.get(url + pages[product_type], params=params, headers=headers)
     soup = bs(response.text, 'html.parser')
-    product_name_list = soup.find_all('div', attrs={'class': 'product__item-link'})
-    product_list = soup.find_all('div', attrs={'class': 'wrap-product-catalog__item'})
+    paginator = soup.find_all('div', attrs={'class': 'page-pagination'})
+    category_pages = paginator[0].find_all('a', attrs={'class': 'page-num AJAX_toggle'})
 
-    for product in product_list:
-        parameters_list = {}
-        product_name = product.find('div', attrs={'class': 'product__item-link'})
-        parameters_list['Название'] = product_name.text
-        black_list = product.find('div', attrs={'class': 'blacklist-value'})
+    for page_number in range(1, len(category_pages)+2):
+        #выглядит костыльно, знаю, прибавляю 2 страницы: активную и текущую, но не придумала лучше,
+        # потому что когда достаешь просто количество страниц там, где их меньше 3 все ок,
+        # где больше 3х появляется какой-то волшебная дополнительная ссылка, которая заставляет проходить по 1 странице в категории еще раз
+        params['page'] = page_number
+        response = requests.get(url + pages[product_type], params=params, headers=headers)
+        soup = bs(response.text, 'html.parser')
+        print('page=', response.url)
 
-        if not black_list:
-
-            parameters = product.find_all('div', attrs={'class': 'text'})
-            param_count = product.find_all('div', attrs={'class': 'right'})
-
-            for name, count in zip(parameters, param_count):
-                name.find('div', attrs={'class': 'text'})
-                count.find('div', attrs={'class': 'text'})
-                try:
-                    int_count = int(count.text)
-                except:
-                    int_count = 0
-                parameters_list[name.text] = int_count
-
-            rating = product.find('div', attrs={'class': 'rate'})
-            try:
-                parameters_list['Общая оценка'] = rating.text
-            except:
-                pass
+        if not response.ok:
+            break
         else:
-            parameters_list['black list'] = True
+            product_name_list = soup.find_all('div', attrs={'class': 'product__item-link'})
+            product_list = soup.find_all('div', attrs={'class': 'wrap-product-catalog__item'})
 
-        link = url + product.find_all('a')[0].attrs['href']
-        parameters_list['link'] = link
-        try:
-            with open('dz_02.txt', 'a', encoding="utf-8") as f:
-                json.dump(parameters_list, f, ensure_ascii=False, indent=4, sort_keys=True)
-        except:
-            with open('dz_02.txt', encoding="utf-8") as f:
-                json.dump(parameters_list, f, ensure_ascii=False, indent=4, sort_keys=True)
+            for product in product_list:
+                parameters_list = {}
+                product_name = product.find('div', attrs={'class': 'product__item-link'})
+                parameters_list['Название'] = product_name.text
+                black_list = product.find('div', attrs={'class': 'blacklist-value'})
+
+                if not black_list:
+
+                    parameters = product.find_all('div', attrs={'class': 'text'})
+                    param_count = product.find_all('div', attrs={'class': 'right'})
+
+                    for name, count in zip(parameters, param_count):
+                        name.find('div', attrs={'class': 'text'})
+                        count.find('div', attrs={'class': 'text'})
+                        try:
+                            int_count = int(count.text)
+                        except:
+                            int_count = 0
+                        parameters_list[name.text] = int_count
+
+                    rating = product.find('div', attrs={'class': 'rate'})
+                    try:
+                        parameters_list['Общая оценка'] = rating.text
+                    except:
+                        pass
+                else:
+                    parameters_list['black list'] = True
+
+                link = url + product.find_all('a')[0].attrs['href']
+                parameters_list['link'] = link
+                full_product_list.append(parameters_list)
+try:
+    with open('dz_02.txt', 'a', encoding="utf-8") as f:
+        json.dump(full_product_list, f, ensure_ascii=False, indent=4, sort_keys=True)
+except:
+    with open('dz_02.txt', encoding="utf-8") as f:
+        json.dump(full_product_list, f, ensure_ascii=False, indent=4, sort_keys=True)
