@@ -1,16 +1,18 @@
-# Необходимо собрать информацию по продуктам питания с сайта:
-# Список протестированных продуктов на сайте Росконтроль.рф
-# Приложение должно анализировать несколько страниц сайта (вводим через input или аргументы).
-# Получившийся список должен содержать:
-#
-# Наимеонвание продукта.
-# Все параметры (Безопасность, Натуральность, Пищевая ценность, Качество) Не забываем преобразовать к цифрам
-# Общую оценку
-# Сайт, откуда получена информация.
-
 import json
 import requests
 from bs4 import BeautifulSoup as bs
+
+# 1. Развернуть у себя на компьютере/виртуальной машине/хостинге MongoDB и реализовать функцию.
+# Добавить в решение со сбором вакансий(продуктов) функцию,
+# которая будет добавлять только новые вакансии/продукты в вашу базу.
+
+from pprint import pprint
+from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError as dke
+
+client = MongoClient('127.0.0.1', 27017)
+db = client['products']
+product_db = db.product
 
 url = 'https://roscontrol.com/category/produkti/'
 pages = ['molochnie_produkti/kefir/', 'myasnie_produkti/kolbasa/', 'riba_i_moreprodukti/solenaya_riba/']
@@ -25,7 +27,7 @@ for product_type in range(0, len(pages)):
     paginator = soup.find_all('div', attrs={'class': 'page-pagination'})
     category_pages = paginator[0].find_all('a', attrs={'class': 'page-num'})
 
-    for page_number in range(1, int(category_pages[-2].text)+1):
+    for page_number in range(1, int(category_pages[-2].text) + 1):
         params['page'] = page_number
         response = requests.get(url + pages[product_type], params=params, headers=headers)
         soup = bs(response.text, 'html.parser')
@@ -59,7 +61,7 @@ for product_type in range(0, len(pages)):
 
                     rating = product.find('div', attrs={'class': 'rate'})
                     try:
-                        parameters_list['Общая оценка'] = rating.text
+                        parameters_list['Общая оценка'] = int(rating.text)
                     except:
                         pass
                 else:
@@ -67,10 +69,22 @@ for product_type in range(0, len(pages)):
 
                 link = url + product.find_all('a')[0].attrs['href']
                 parameters_list['link'] = link
-                full_product_list.append(parameters_list)
-try:
-    with open('dz_02.txt', 'a', encoding="utf-8") as f:
-        json.dump(full_product_list, f, ensure_ascii=False, indent=4, sort_keys=True)
-except:
-    with open('dz_02.txt', encoding="utf-8") as f:
-        json.dump(full_product_list, f, ensure_ascii=False, indent=4, sort_keys=True)
+
+                if len(list(product_db.find({'link': link}))) == 0:
+                    try:
+                        product_db.insert_one(parameters_list)
+                    except dke:
+                        print('Document already exist')
+
+                # full_product_list.append(parameters_list)
+
+min_rate = int(input('Введите минимально допустимое качество:\n'))
+for doc in product_db.find({'$or': [{'Качество': {'$gte': min_rate}}, {'Общая оценка': {'$gte': min_rate}}]}):
+    # pprint(doc.find_one({"Название": 'Форель слабосоленая филе-кусок  "Своя рыбка"'}))
+    pprint(doc)
+    # try:
+#     with open('dz_02.txt', 'a', encoding="utf-8") as f:
+#         json.dump(full_product_list, f, ensure_ascii=False, indent=4, sort_keys=True)
+# except:
+#     with open('dz_02.txt', encoding="utf-8") as f:
+#         json.dump(full_product_list, f, ensure_ascii=False, indent=4, sort_keys=True)
